@@ -51,6 +51,7 @@ class _AddProfileDetailsScreenState extends State<AddProfileDetailsScreen> {
           final prefs = await SharedPreferences.getInstance();
           final storageService = StorageService(prefs);
           await storageService.saveIsProfileCompleted(true);
+          await storageService.saveMobile(widget.mobileNumber.trim());
           Get.offAll(() => HomeScreen());
         }
       } catch (e) {

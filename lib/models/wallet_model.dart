@@ -4,6 +4,8 @@ class WalletModel {
   final String unit;
   final String totalEarnedPoints;
   final List<WalletTransaction> transactions;
+  final String referralCode;
+  final String referralMessage;
 
   WalletModel({
     required this.points,
@@ -11,6 +13,8 @@ class WalletModel {
     required this.unit,
     required this.totalEarnedPoints,
     required this.transactions,
+    this.referralCode = '',
+    this.referralMessage = '',
   });
 
   factory WalletModel.fromJson(Map<String, dynamic> json) {
@@ -22,6 +26,8 @@ class WalletModel {
       transactions: (json['transaction'] as List<dynamic>?)
           ?.map((transaction) => WalletTransaction.fromJson(transaction))
           .toList() ?? [],
+      referralCode: json['referral_code']?.toString() ?? '',
+      referralMessage: json['referral_message']?.toString() ?? '',
     );
   }
 }

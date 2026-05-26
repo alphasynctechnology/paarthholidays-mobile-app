@@ -11,6 +11,9 @@ import '../models/booking_model.dart';
 import '../models/enquiry_details_model.dart';
 import '../models/offer_model.dart';
 import '../models/wallet_model.dart';
+import '../models/tour_model.dart';
+import '../models/news_model.dart';
+import '../models/payment_order_model.dart';
 import 'storage_service.dart';
 
 class ApiService {
@@ -95,10 +98,7 @@ class ApiService {
       final response = await http
           .get(
             url,
-            headers: {
-              ..._getHeaders(),
-              'user_type': '1',
-            },
+            headers: _getHeaders(),
           )
           .timeout(
             const Duration(seconds: 50),
@@ -111,8 +111,14 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
-        if (data['status'] == true && data['resultData'] != null) {
-          return ProfileModel.fromJson(data['resultData']);
+        final status = data['status'];
+        final isOk = status == true ||
+            status == 1 ||
+            status == '1' ||
+            status == 'true';
+        final result = data['resultData'] ?? data['resultdata'];
+        if (isOk && result is Map<String, dynamic>) {
+          return ProfileModel.fromJson(result);
         } else {
           throw Exception(data['message'] ?? 'Failed to fetch profile');
         }
@@ -353,6 +359,164 @@ class ApiService {
     }
   }
 
+  Future<PaymentOrderModel> createPaymentOrder(String enquiryId) async {
+    await _ensureInitialized();
+    final url = Uri.parse('$baseUrl/create-payment-order');
+    try {
+      final response = await http
+          .post(
+            url,
+            headers: _getHeaders(),
+            body: jsonEncode({'enquiry_id': enquiryId}),
+          )
+          .timeout(const Duration(seconds: 50));
+
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      final isOk = data['status'] == true ||
+          data['status'] == 1 ||
+          data['status'] == '1';
+      final result = data['resultData'] ?? data['resultdata'];
+
+      if (response.statusCode == 200 && isOk && result is Map<String, dynamic>) {
+        return PaymentOrderModel.fromJson(result);
+      }
+
+      throw Exception(data['message'] ?? 'Failed to create payment order');
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Failed to create payment order: $e');
+    }
+  }
+
+  Future<String> verifyPayment({
+    required String enquiryId,
+    required String orderId,
+    required String paymentId,
+    required String signature,
+  }) async {
+    await _ensureInitialized();
+    final url = Uri.parse('$baseUrl/verify-payment');
+    try {
+      final response = await http
+          .post(
+            url,
+            headers: _getHeaders(),
+            body: jsonEncode({
+              'enquiry_id': enquiryId,
+              'razorpay_order_id': orderId,
+              'razorpay_payment_id': paymentId,
+              'razorpay_signature': signature,
+            }),
+          )
+          .timeout(const Duration(seconds: 50));
+
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      final isOk = data['status'] == true ||
+          data['status'] == 1 ||
+          data['status'] == '1';
+
+      if (response.statusCode == 200 && isOk) {
+        return data['message']?.toString() ?? 'Payment successful';
+      }
+
+      throw Exception(data['message'] ?? 'Payment verification failed');
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Payment verification failed: $e');
+    }
+  }
+
+  /// Submits tour feedback for a completed booking.
+  ///
+  /// POST /submit-feedback
+  Future<Map<String, dynamic>> submitFeedback({
+    required String enquiryId,
+    required int companyRating,
+    required String companyComment,
+    required List<Map<String, dynamic>> hotelFeedback,
+    required List<Map<String, dynamic>> vehicleFeedback,
+  }) async {
+    await _ensureInitialized();
+    final url = Uri.parse('$baseUrl/submit-feedback');
+    try {
+      final response = await http
+          .post(
+            url,
+            headers: _getHeaders(),
+            body: jsonEncode({
+              'enquiry_id': enquiryId,
+              'company_rating': companyRating,
+              'company_comment': companyComment,
+              'hotels': hotelFeedback,
+              'vehicles': vehicleFeedback,
+            }),
+          )
+          .timeout(const Duration(seconds: 50));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        if (data['status'] == true) {
+          return data;
+        }
+        throw Exception(data['message'] ?? 'Failed to submit feedback');
+      }
+      throw Exception('Server returned status code: ${response.statusCode}');
+    } catch (e) {
+      if (e.toString().contains('SocketException')) {
+        throw Exception(
+          'Unable to connect to server. Please check your internet connection.',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  /// Sends an SOS alert for an ongoing tour.
+  ///
+  /// POST /sos
+  Future<Map<String, dynamic>> submitSos({
+    required String enquiryId,
+    required int tripDay,
+    String message = '',
+  }) async {
+    await _ensureInitialized();
+    final url = Uri.parse('$baseUrl/sos');
+    try {
+      final response = await http
+          .post(
+            url,
+            headers: _getHeaders(),
+            body: jsonEncode({
+              'enquiry_id': enquiryId,
+              'trip_day': tripDay,
+              'message': message,
+            }),
+          )
+          .timeout(const Duration(seconds: 50));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        final status = data['status'];
+        final isOk = status == true ||
+            status == 1 ||
+            status == '1' ||
+            status == 'true';
+        if (isOk) {
+          return data;
+        }
+        throw Exception(data['message'] ?? 'Failed to send SOS alert');
+      }
+      throw Exception('Server returned status code: ${response.statusCode}');
+    } catch (e) {
+      if (e.toString().contains('SocketException')) {
+        throw Exception(
+          'Unable to connect to server. Please check your internet connection.',
+        );
+      }
+      rethrow;
+    }
+  }
+
   /// Fetches the latest offers from the API.
   ///
   /// Sends a GET request to the /offers endpoint.
@@ -395,6 +559,93 @@ class ApiService {
         );
       }
       throw Exception('Failed to fetch offers: $e');
+    }
+  }
+
+  /// Fetches group tour packages for marketing.
+  ///
+  /// GET /group-tours — expected response: { status, resultData: [TourModel fields] }
+  /// Returns empty list if endpoint is not yet available.
+  Future<List<TourModel>> fetchGroupTours() async {
+    final url = Uri.parse('$baseUrl/group-tours');
+    try {
+      final response = await http
+          .get(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 50));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        if (data['status'] == true && data['resultData'] != null) {
+          return TourModel.listFromJson(data['resultData']);
+        }
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Fetches news and announcements.
+  ///
+  /// GET /news — expected response: { status, resultData: [NewsModel fields] }
+  /// Returns empty list if endpoint is not yet available.
+  Future<List<NewsModel>> fetchNews() async {
+    final url = Uri.parse('$baseUrl/news');
+    try {
+      final response = await http
+          .get(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 50));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        if (data['status'] == true && data['resultData'] != null) {
+          return NewsModel.listFromJson(data['resultData']);
+        }
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Fetches public upcoming tour departures.
+  ///
+  /// GET /upcoming-tours — expected response: { status, resultData: [TourModel fields] }
+  /// Returns empty list if endpoint is not yet available.
+  Future<List<TourModel>> fetchUpcomingTours() async {
+    final url = Uri.parse('$baseUrl/upcoming-tours');
+    try {
+      final response = await http
+          .get(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 50));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        if (data['status'] == true && data['resultData'] != null) {
+          return TourModel.listFromJson(data['resultData']);
+        }
+      }
+      return [];
+    } catch (_) {
+      return [];
     }
   }
 

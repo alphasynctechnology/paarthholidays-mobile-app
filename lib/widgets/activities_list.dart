@@ -1,226 +1,167 @@
 import 'package:flutter/material.dart';
-import '../models/enquiry_details_model.dart';
 import 'package:flutter_html/flutter_html.dart';
+import '../models/enquiry_details_model.dart';
+import '../screens/home/bookings/widgets/booking_detail_components.dart';
+import '../core/theme/app_colors.dart';
 
 class ActivitiesList extends StatelessWidget {
   final List<Activity> activities;
 
-  const ActivitiesList({
-    Key? key,
-    required this.activities,
-  }) : super(key: key);
+  const ActivitiesList({super.key, required this.activities});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.all(8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.explore,
-                  color: Theme.of(context).primaryColor,
-                  size: 24,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Activities',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+    return BookingSectionCard(
+      title: 'Itinerary',
+      icon: Icons.explore_outlined,
+      child: Column(
+        children: [
+          for (var i = 0; i < activities.length; i++)
+            _ActivityTimelineItem(
+              activity: activities[i],
+              isLast: i == activities.length - 1,
             ),
-            const SizedBox(height: 16),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: activities.length,
-              itemBuilder: (context, index) {
-                final activity = activities[index];
-                return ActivityCard(activity: activity);
-              },
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
 }
 
-class ActivityCard extends StatefulWidget {
+class _ActivityTimelineItem extends StatefulWidget {
   final Activity activity;
+  final bool isLast;
 
-  const ActivityCard({
-    Key? key,
+  const _ActivityTimelineItem({
     required this.activity,
-  }) : super(key: key);
+    required this.isLast,
+  });
 
   @override
-  State<ActivityCard> createState() => _ActivityCardState();
+  State<_ActivityTimelineItem> createState() => _ActivityTimelineItemState();
 }
 
-class _ActivityCardState extends State<ActivityCard> {
+class _ActivityTimelineItemState extends State<_ActivityTimelineItem> {
   bool isExpanded = false;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Column(
+    return IntrinsicHeight(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withOpacity(0.05),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
-              ),
-            ),
-            child: Row(
+          SizedBox(
+            width: 32,
+            child: Column(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  width: 28,
+                  height: 28,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.primary,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withOpacity(0.2),
-                        spreadRadius: 1,
-                        blurRadius: 2,
-                        offset: const Offset(0, 1),
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.calendar_today, color: Colors.blue),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Day ${widget.activity.day}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                  child: Center(
+                    child: Text(
+                      widget.activity.day,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        widget.activity.plan,
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
+                if (!widget.isLast)
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      color: AppColors.border,
+                    ),
+                  ),
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          const SizedBox(width: 10),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: widget.isLast ? 0 : 16),
+              child: BookingInnerCard(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.location_on, color: Colors.grey, size: 16),
-                    const SizedBox(width: 4),
                     Text(
-                      widget.activity.destName,
+                      widget.activity.plan,
                       style: const TextStyle(
-                        color: Colors.grey,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Activity Details',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Html(
-                        data: widget.activity.activity,
-                        style: {
-                          'body': Style(
-                            margin: Margins.zero,
-                            fontSize: FontSize(13),
-                            lineHeight: LineHeight(1.4),
-                            padding: HtmlPaddings.zero,
-                            maxLines: isExpanded ? null : 5,
-                            textOverflow: isExpanded ? null : TextOverflow.ellipsis,
-                          ),
-                          'p': Style(
-                            margin: Margins(bottom: Margin(8)),
-                          ),
-                          'b': Style(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      Center(
-                        child: TextButton(
-                          onPressed: () {
-                            setState(() {
-                              isExpanded = !isExpanded;
-                            });
-                          },
-                          child: Text(
-                            isExpanded ? 'Show Less' : 'Show More',
-                            style: TextStyle(
-                              color: Theme.of(context).primaryColor,
-                              fontWeight: FontWeight.w500,
+                    if (widget.activity.destName.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.place_outlined, size: 14, color: AppColors.textSecondary),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              widget.activity.destName,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
                     ],
-                  ),
+                    const SizedBox(height: 10),
+                    Html(
+                      data: widget.activity.activity,
+                      style: {
+                        'body': Style(
+                          margin: Margins.zero,
+                          fontSize: FontSize(13),
+                          lineHeight: LineHeight(1.45),
+                          padding: HtmlPaddings.zero,
+                          maxLines: isExpanded ? null : 4,
+                          textOverflow: isExpanded ? null : TextOverflow.ellipsis,
+                          color: AppColors.textSecondary,
+                        ),
+                        'p': Style(margin: Margins(bottom: Margin(6))),
+                        'b': Style(fontWeight: FontWeight.bold),
+                      },
+                    ),
+                    if (widget.activity.activity.length > 120)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton(
+                          onPressed: () => setState(() => isExpanded = !isExpanded),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.primary,
+                            padding: EdgeInsets.zero,
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: Text(isExpanded ? 'Show less' : 'Read more'),
+                        ),
+                      ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ],
       ),
     );
   }
-} 
+}

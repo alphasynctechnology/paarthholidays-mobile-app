@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 import '../../core/theme/app_colors.dart';
-import 'package:paarth_holidays/screens/home/dashboard/dashboard_screen.dart';
 import 'package:paarth_holidays/screens/home/home_controller.dart';
 import 'package:paarth_holidays/screens/home/leads/lead_list_screen.dart';
 import 'package:paarth_holidays/screens/home/profile/profile_screen.dart';

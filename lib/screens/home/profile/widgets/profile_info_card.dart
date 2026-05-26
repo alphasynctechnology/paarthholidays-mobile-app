@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../models/profile_model.dart';
 
 class ProfileInfoCard extends StatelessWidget {
   final ProfileModel profile;
+  final String mobileFallback;
 
   const ProfileInfoCard({
     super.key,
     required this.profile,
+    this.mobileFallback = '',
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Card(
       elevation: 4,
       margin: const EdgeInsets.all(16),
@@ -23,22 +25,35 @@ class ProfileInfoCard extends StatelessWidget {
         child: Column(
           children: [
             const SizedBox(height: 20),
-            _buildInfoRow(context, Icons.person_outline, 'Name', profile.name),
+            _buildInfoRow(
+              Icons.person_outline,
+              'Name',
+              profile.displayName('Guest'),
+            ),
             const SizedBox(height: 16),
-            _buildInfoRow(context, Icons.email_outlined, 'Email', profile.email),
+            _buildInfoRow(
+              Icons.email_outlined,
+              'Email',
+              profile.displayEmail(),
+            ),
             const SizedBox(height: 16),
-            _buildInfoRow(context, Icons.phone_outlined, 'Mobile', profile.mobile),
+            _buildInfoRow(
+              Icons.phone_outlined,
+              'Mobile',
+              profile.displayMobile(mobileFallback),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInfoRow(BuildContext context, IconData icon, String label, String value) {
-    final theme = Theme.of(context);
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    final isPlaceholder = value == 'Not set';
+
     return Row(
       children: [
-        Icon(icon, color: theme.primaryColor, size: 24),
+        Icon(icon, color: AppColors.primary, size: 24),
         const SizedBox(width: 16),
         Expanded(
           child: Column(
@@ -46,15 +61,21 @@ class ProfileInfoCard extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 value,
-                style: theme.textTheme.bodyLarge?.copyWith(
+                style: TextStyle(
+                  fontSize: 16,
                   fontWeight: FontWeight.w500,
+                  color: isPlaceholder
+                      ? AppColors.textSecondary
+                      : AppColors.textPrimary,
+                  fontStyle: isPlaceholder ? FontStyle.italic : FontStyle.normal,
                 ),
               ),
             ],
@@ -63,4 +84,4 @@ class ProfileInfoCard extends StatelessWidget {
       ],
     );
   }
-} 
+}

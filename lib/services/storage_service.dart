@@ -4,6 +4,8 @@ class StorageService {
   static const String tokenKey = 'auth_token';
   static const String firstTimeKey = 'is_first_time';
   static const String isProfileCompletedKey = 'is_profile_completed';
+  static const String mobileKey = 'user_mobile';
+  static const String loginMethodKey = 'login_method';
   final SharedPreferences _prefs;
 
   StorageService(this._prefs);
@@ -35,6 +37,24 @@ class StorageService {
   bool getIsProfileCompleted() {
     return _prefs.getBool(isProfileCompletedKey) ?? false;
   }
+
+  Future<void> saveMobile(String mobile) async {
+    await _prefs.setString(mobileKey, mobile);
+  }
+
+  String? getMobile() {
+    return _prefs.getString(mobileKey);
+  }
+
+  Future<void> saveLoginMethod(String method) async {
+    await _prefs.setString(loginMethodKey, method);
+  }
+
+  String getLoginMethod() {
+    return _prefs.getString(loginMethodKey) ?? 'otp';
+  }
+
+  bool get isOtpLogin => getLoginMethod() == 'otp';
 
   Future<void> clearAll() async {
     await _prefs.clear();

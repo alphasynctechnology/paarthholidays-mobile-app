@@ -135,6 +135,8 @@ class LoginController extends GetxController {
       isLoading.value = true;
       final result = await _apiService.validateOtp(token: _otpToken!, otp: otp);
       await _storageService.saveToken(result['auth_token']);
+      await _storageService.saveMobile(mobileController.text.trim());
+      await _storageService.saveLoginMethod('otp');
       await _storageService.saveIsProfileCompleted(result['is_profile_completed'] == true);
       if (result['is_profile_completed'] == true) {
         Get.offAll(() => HomeScreen());
