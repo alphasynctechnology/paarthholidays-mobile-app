@@ -30,7 +30,7 @@ class ContactPickerController extends GetxController {
       } else {
         filteredContacts.assignAll(
           contacts.where((contact) {
-            final name = contact.displayName.toLowerCase();
+            final name = contact.displayName?.toLowerCase() ?? '';
             final numbers = contact.phones.map((p) => p.number.replaceAll(RegExp(r'\D'), ''));
             return name.contains(q) || numbers.any((numb) => numb.contains(q.replaceAll(RegExp(r'\D'), '')));
           }),
@@ -41,7 +41,7 @@ class ContactPickerController extends GetxController {
   }
 
   void selectContact(Contact contact) {
-    final key = contact.displayName + (contact.phones.isNotEmpty ? contact.phones.first.number : '');
+    final key = (contact.displayName ?? '') + (contact.phones.isNotEmpty ? contact.phones.first.number : '');
     selectedContactKey.value = key;
     selectedContact.value = contact;
   }

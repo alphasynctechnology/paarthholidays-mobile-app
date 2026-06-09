@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../home/home_screen.dart';
+import '../../../services/push_notification_service.dart';
 import '../../../services/api_service.dart';
 import '../../../services/storage_service.dart';
 import 'dart:async';
@@ -138,6 +139,7 @@ class LoginController extends GetxController {
       await _storageService.saveMobile(mobileController.text.trim());
       await _storageService.saveLoginMethod('otp');
       await _storageService.saveIsProfileCompleted(result['is_profile_completed'] == true);
+      await PushNotificationService.instance.syncTokenIfLoggedIn();
       if (result['is_profile_completed'] == true) {
         Get.offAll(() => HomeScreen());
         Get.snackbar(

@@ -100,7 +100,7 @@ class CreateLeadController extends GetxController {
         contactController.text = phoneNumber;
         // If name is empty, set it from contact
         if (nameController.text.isEmpty) {
-          nameController.text = selectedContact.displayName;
+          nameController.text = selectedContact.displayName ?? '';
         }
       }
     } catch (e) {

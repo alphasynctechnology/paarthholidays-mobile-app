@@ -783,11 +783,14 @@ class ApiService {
       await _ensureInitialized();
       final List<Map<String, String>> data = contacts
           .where((c) => c.phones.isNotEmpty)
-          .map((c) => {
-                'name': c.displayName,
-                'number': c.phones.first.number.replaceAll(RegExp(r'\D'), '').replaceFirst(RegExp(r'^.*(?=\d{10}\$)'), ''),
-              })
-          .where((c) => c['number'] != null && c['number']!.length == 10)
+          .map((c) {
+            final phone = c.phones.first.number.replaceAll(RegExp(r'\D'), '').replaceFirst(RegExp(r'^.*(?=\d{10}\$)'), '');
+            return {
+              'name': c.displayName ?? '',
+              'number': phone,
+            };
+          })
+          .where((c) => c['number']!.length == 10)
           .toList();
       if (data.isEmpty) return;
       final response = await http.post(
@@ -898,6 +901,87 @@ class ApiService {
         );
       }
       throw Exception('Failed to update profile: $e');
+    }
+  }
+
+  Future<void> saveFcmToken({
+    required String deviceId,
+    required String token,
+    required String platform,
+  }) async {
+    await _ensureInitialized();
+    final url = Uri.parse('$baseUrl/save-fcm');
+    final response = await http
+        .post(
+          url,
+          headers: _getHeaders(),
+          body: jsonEncode({
+            'device_id': deviceId,
+            'token': token,
+            'platform': platform,
+          }),
+        )
+        .timeout(const Duration(seconds: 30));
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to save FCM token');
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    if (data['status'] != true) {
+      throw Exception(data['message'] ?? 'Failed to save FCM token');
+    }
+  }
+
+  Future<void> removeFcmToken({required String deviceId}) async {
+    await _ensureInitialized();
+    final url = Uri.parse('$baseUrl/remove-fcm');
+    final response = await http
+        .post(
+          url,
+          headers: _getHeaders(),
+          body: jsonEncode({'device_id': deviceId}),
+        )
+        .timeout(const Duration(seconds: 30));
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to remove FCM token');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchNotifications() async {
+    await _ensureInitialized();
+    final url = Uri.parse('$baseUrl/notifications');
+    final response = await http
+        .get(url, headers: _getHeaders())
+        .timeout(const Duration(seconds: 30));
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to fetch notifications');
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    if (data['status'] != true) {
+      throw Exception(data['message'] ?? 'Failed to fetch notifications');
+    }
+
+    final rows = data['resultData'] as List<dynamic>? ?? [];
+    return rows.map((row) => Map<String, dynamic>.from(row as Map)).toList();
+  }
+
+  Future<void> markNotificationsRead({int notificationId = 0}) async {
+    await _ensureInitialized();
+    final url = Uri.parse('$baseUrl/mark-notifications-read');
+    final response = await http
+        .post(
+          url,
+          headers: _getHeaders(),
+          body: jsonEncode({'notification_id': notificationId}),
+        )
+        .timeout(const Duration(seconds: 30));
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to mark notifications as read');
     }
   }
 }

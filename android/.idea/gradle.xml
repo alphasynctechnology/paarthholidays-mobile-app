@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="GradleMigrationSettings" migrationVersion="1" />
   <component name="GradleSettings">
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
         <compositeConfiguration>
           <compositeBuild compositeDefinitionSource="SCRIPT">
             <builds>
-              <build path="$PROJECT_DIR$/../../../../../Setup/flutter/packages/flutter_tools/gradle" name="gradle">
+              <build path="$PROJECT_DIR$/../../../flutter/packages/flutter_tools/gradle" name="gradle">
                 <projects>
-                  <project path="$PROJECT_DIR$/../../../../../Setup/flutter/packages/flutter_tools/gradle" />
+                  <project path="$PROJECT_DIR$/../../../flutter/packages/flutter_tools/gradle" />
                 </projects>
               </build>
             </builds>
@@ -19,15 +20,23 @@
         <option name="gradleJvm" value="#GRADLE_LOCAL_JAVA_HOME" />
         <option name="modules">
           <set>
-            <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/easy_pdf_viewer-1.0.8/android" />
+            <option value="$USER_HOME$/.pub-cache/git/pdf_viewer-7f6b2e0e7ba4fb1ee0b3408154680b08b6f60f90/android" />
+            <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/device_info_plus-12.4.0/android" />
+            <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/firebase_core-3.15.2/android" />
+            <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/firebase_messaging-15.2.10/android" />
             <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/flutter_contacts-1.1.9+2/android" />
+            <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/flutter_local_notifications-18.0.1/android" />
+            <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/package_info_plus-8.3.1/android" />
             <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/path_provider_android-2.2.17/android" />
             <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/permission_handler_android-13.0.1/android" />
+            <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/razorpay_flutter-1.4.5/android" />
+            <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/share_plus-10.1.4/android" />
             <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/shared_preferences_android-2.4.10/android" />
             <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/sqflite_android-2.4.1/android" />
+            <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/url_launcher_android-6.3.30/android" />
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/app" />
-            <option value="$PROJECT_DIR$/../../../../../Setup/flutter/packages/flutter_tools/gradle" />
+            <option value="$PROJECT_DIR$/../../../flutter/packages/flutter_tools/gradle" />
           </set>
         </option>
       </GradleProjectSettings>

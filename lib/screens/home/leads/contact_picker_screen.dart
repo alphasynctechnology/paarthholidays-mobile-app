@@ -22,7 +22,9 @@ class _ContactPickerScreenState extends State<ContactPickerScreen> {
 
   Future<void> _fetchContacts() async {
     controller.isLoading.value = true;
-    final contacts = await FlutterContacts.getContacts(withProperties: true, withPhoto: true);
+    final contacts = await FlutterContacts.getAll(
+      properties: {ContactProperty.name, ContactProperty.phone, ContactProperty.photoThumbnail},
+    );
     controller.setContacts(contacts);
   }
 
@@ -67,17 +69,18 @@ class _ContactPickerScreenState extends State<ContactPickerScreen> {
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (context, index) {
                       final contact = controller.filteredContacts[index];
-                      final contactKey = contact.displayName + (contact.phones.isNotEmpty ? contact.phones.first.number : '');
+                      final displayName = contact.displayName ?? '';
+                      final contactKey = displayName + (contact.phones.isNotEmpty ? contact.phones.first.number : '');
                       final isSelected = controller.selectedContactKey.value == contactKey;
                       print('SelectedKey: ${controller.selectedContactKey.value}, CurrentKey: $contactKey, isSelected: $isSelected');
                       return ListTile(
                         leading: CircleAvatar(
                           backgroundColor: Theme.of(context).primaryColor,
-                          child: contact.displayName.isNotEmpty
-                              ? Text(contact.displayName[0].toUpperCase(), style: const TextStyle(color: Colors.white))
+                          child: displayName.isNotEmpty
+                              ? Text(displayName[0].toUpperCase(), style: const TextStyle(color: Colors.white))
                               : const Icon(Icons.person, color: Colors.white),
                         ),
-                        title: Text(contact.displayName),
+                        title: Text(displayName),
                         subtitle: contact.phones.isNotEmpty ? Text(contact.phones.first.number) : null,
                         trailing: isSelected ? const Icon(Icons.check_circle, color: Colors.green) : null,
                         selected: isSelected,

@@ -6,6 +6,7 @@ class StorageService {
   static const String isProfileCompletedKey = 'is_profile_completed';
   static const String mobileKey = 'user_mobile';
   static const String loginMethodKey = 'login_method';
+  static const String deviceIdKey = 'device_id';
   final SharedPreferences _prefs;
 
   StorageService(this._prefs);
@@ -55,6 +56,14 @@ class StorageService {
   }
 
   bool get isOtpLogin => getLoginMethod() == 'otp';
+
+  Future<void> saveDeviceId(String deviceId) async {
+    await _prefs.setString(deviceIdKey, deviceId);
+  }
+
+  String? getDeviceId() {
+    return _prefs.getString(deviceIdKey);
+  }
 
   Future<void> clearAll() async {
     await _prefs.clear();

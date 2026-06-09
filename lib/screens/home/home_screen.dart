@@ -3,6 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 import '../../core/theme/app_colors.dart';
 import 'package:paarth_holidays/screens/home/home_controller.dart';
+import 'package:paarth_holidays/controllers/notifications_controller.dart';
 import 'package:paarth_holidays/screens/home/leads/lead_list_screen.dart';
 import 'package:paarth_holidays/screens/home/profile/profile_screen.dart';
 
@@ -21,6 +22,7 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Get.put(NotificationsController(), permanent: true);
     final HomeController homeController = Get.put(HomeController());
     return Scaffold(
       body: Obx(() => pages[homeController.selectedIndex.value]),

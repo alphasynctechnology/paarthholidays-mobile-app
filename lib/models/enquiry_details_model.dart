@@ -66,19 +66,10 @@ class EnquiryDetailsModel {
     );
   }
 
-  /// Feedback is available for 3 days after the last itinerary day.
+  /// Feedback is available for completed bookings until it is submitted.
   bool get canShowFeedback {
-    if (booking.isFeedbackSubmitted || activities.isEmpty) return false;
-
-    final departure = BookingDetails.parseDepartureDate(booking.departureDate);
-    if (departure == null) return false;
-
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final tripEnd = departure.add(Duration(days: activities.length - 1));
-    final daysSinceTripEnd = today.difference(tripEnd).inDays;
-
-    return daysSinceTripEnd >= 1 && daysSinceTripEnd <= 3;
+    if (booking.isFeedbackSubmitted || booking.isCancelled) return false;
+    return booking.isTripCompleted;
   }
 }
 
@@ -106,6 +97,20 @@ class BookingDetails {
   });
 
   bool get isCompleted => isBookingDone == '4';
+
+  bool get isCancelled => isBookingDone == '2';
+
+  /// Matches booking list logic: departure date is in the past.
+  bool get isTripCompleted {
+    if (isCompleted) return true;
+
+    final departure = parseDepartureDate(departureDate);
+    if (departure == null) return false;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return today.isAfter(departure);
+  }
 
   /// Hotel and vehicle vouchers are visible from 1 day before departure.
   bool get canViewVouchers {

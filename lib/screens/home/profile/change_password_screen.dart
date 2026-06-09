@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../../widgets/common/app_bar.dart';
 import 'change_password_controller.dart';
-import '../../../widgets/common/loader_dialog.dart';
 
 class ChangePasswordScreen extends StatelessWidget {
   const ChangePasswordScreen({super.key});
@@ -12,26 +12,15 @@ class ChangePasswordScreen extends StatelessWidget {
     final controller = Get.put(ChangePasswordController());
 
     return Obx(() {
-      // Show/hide loader dialog after build
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (controller.isLoading.value) {
-          if (!(Get.isDialogOpen ?? false)) {
-            Get.dialog(const LoaderDialog(), barrierDismissible: false);
-          }
-        } else {
-          if (Get.isDialogOpen ?? false) {
-            Get.back();
-          }
-        }
-      });
-
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Change Password'),
-          centerTitle: true,
-          elevation: 0,
+        appBar: const CommonAppBar(
+          title: 'Change Password',
+          showWalletIcon: false,
+          showNotificationIcon: false,
         ),
-        body: SingleChildScrollView(
+        body: Stack(
+          children: [
+            SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Form(
             key: controller.formKey,
@@ -324,6 +313,8 @@ class ChangePasswordScreen extends StatelessWidget {
               ],
             ),
           ),
+            ),
+          ],
         ),
       );
     });

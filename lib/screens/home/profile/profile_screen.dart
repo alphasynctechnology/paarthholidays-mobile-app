@@ -7,7 +7,6 @@ import 'widgets/profile_info_card.dart';
 import 'widgets/profile_tour_support_card.dart';
 import 'profile_controller.dart';
 import 'edit_profile_screen.dart';
-import '../../../widgets/common/loader_dialog.dart';
 import '../../../utils/referral_share.dart';
 import '../../wallet/wallet_screen.dart';
 import 'change_password_screen.dart';
@@ -100,20 +99,20 @@ class ProfileScreen extends StatelessWidget {
     final controller = Get.put(ProfileController());
 
     return Obx(() {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (controller.isLoading.value) {
-          if (!(Get.isDialogOpen ?? false)) {
-            Get.dialog(const LoaderDialog(), barrierDismissible: false);
-          }
-        } else {
-          if (Get.isDialogOpen ?? false) {
-            Get.back();
-          }
-        }
-      });
-
       final profile = controller.profile.value;
       final ongoing = controller.ongoingTour.value;
+
+      if (controller.isLoading.value && profile == null) {
+        return const Scaffold(
+          appBar: CommonAppBar(
+            title: 'Profile',
+            showBackButton: false,
+          ),
+          body: Center(
+            child: CircularProgressIndicator(color: AppColors.primary),
+          ),
+        );
+      }
 
       return Scaffold(
         appBar: const CommonAppBar(
