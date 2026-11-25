@@ -1,7 +1,9 @@
 import 'package:get/get.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/notification_model.dart';
 import '../services/api_service.dart';
+import '../services/storage_service.dart';
 
 class NotificationsController extends GetxController {
   final ApiService _apiService = ApiService();
@@ -20,6 +22,12 @@ class NotificationsController extends GetxController {
   }
 
   Future<void> fetchNotifications() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!StorageService(prefs).isLoggedIn) {
+      notifications.clear();
+      return;
+    }
+
     try {
       isLoading.value = true;
       error.value = '';

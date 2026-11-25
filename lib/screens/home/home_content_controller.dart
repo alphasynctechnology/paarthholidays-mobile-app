@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../models/booking_model.dart';
 import '../../../models/enquiry_details_model.dart';
 import '../../../models/news_model.dart';
@@ -7,6 +8,7 @@ import '../../../models/offer_model.dart';
 import '../../../models/today_itinerary_model.dart';
 import '../../../models/tour_model.dart';
 import '../../../services/api_service.dart';
+import '../../../services/storage_service.dart';
 import '../../../data/home_news_content.dart';
 import 'home_controller.dart';
 
@@ -59,6 +61,8 @@ class HomeContentController extends GetxController {
 
   Future<List<BookingModel>> _fetchBookings() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!StorageService(prefs).isLoggedIn) return [];
       return await _apiService.fetchBookings();
     } catch (_) {
       return [];

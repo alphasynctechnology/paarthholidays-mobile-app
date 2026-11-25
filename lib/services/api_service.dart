@@ -40,6 +40,117 @@ class ApiService {
     };
   }
 
+  Map<String, String> _defaultHeaders() {
+    return {'Content-Type': 'application/json', 'Accept': 'application/json'};
+  }
+
+  void _logLong(String label, String content) {
+    if (!kDebugMode) return;
+
+    const chunkSize = 800;
+    debugPrint('$label (${content.length} chars):');
+    for (var i = 0; i < content.length; i += chunkSize) {
+      final end =
+          i + chunkSize < content.length ? i + chunkSize : content.length;
+      debugPrint(content.substring(i, end));
+    }
+  }
+
+  String _formatBody(String body) {
+    if (body.isEmpty) return body;
+    try {
+      return const JsonEncoder.withIndent('  ').convert(jsonDecode(body));
+    } catch (_) {
+      return body;
+    }
+  }
+
+  void _logRequest(
+    String method,
+    Uri url, {
+    Map<String, String>? headers,
+    Object? body,
+  }) {
+    if (!kDebugMode) return;
+
+    debugPrint('API REQUEST [$method] $url');
+    if (headers != null) {
+      debugPrint('Headers: $headers');
+    }
+    if (body != null) {
+      _logLong('Body', body.toString());
+    }
+  }
+
+  void _logResponse(http.Response response) {
+    if (!kDebugMode) return;
+
+    debugPrint(
+      'API RESPONSE [${response.statusCode}] ${response.request?.url}',
+    );
+    _logLong('Body', _formatBody(response.body));
+  }
+
+  void _logError(String method, Uri url, Object error) {
+    if (!kDebugMode) return;
+
+    debugPrint('API ERROR [$method] $url');
+    debugPrint(error.toString());
+  }
+
+  Future<http.Response> _get(
+    Uri url, {
+    Map<String, String>? headers,
+    Duration timeout = const Duration(seconds: 50),
+    String? timeoutMessage,
+  }) async {
+    _logRequest('GET', url, headers: headers);
+    try {
+      final request = http.get(url, headers: headers);
+      final response =
+          timeoutMessage == null
+              ? await request.timeout(timeout)
+              : await request.timeout(
+                timeout,
+                onTimeout: () {
+                  throw Exception(timeoutMessage);
+                },
+              );
+      _logResponse(response);
+      return response;
+    } catch (e) {
+      _logError('GET', url, e);
+      rethrow;
+    }
+  }
+
+  Future<http.Response> _post(
+    Uri url, {
+    Map<String, String>? headers,
+    Object? body,
+    Duration timeout = const Duration(seconds: 50),
+    String? timeoutMessage,
+  }) async {
+    _logRequest('POST', url, headers: headers, body: body);
+    try {
+      final request = http.post(url, headers: headers, body: body);
+      final response =
+          timeoutMessage == null
+              ? await request.timeout(timeout)
+              : await request.timeout(
+                timeout,
+                onTimeout: () {
+                  throw Exception(timeoutMessage);
+                },
+              );
+      _logResponse(response);
+      return response;
+    } catch (e) {
+      _logError('POST', url, e);
+      rethrow;
+    }
+  }
+
   /// Sends an OTP to the given mobile number for sign-in.
   ///
   /// Sends a POST request to the /otp-signin endpoint.
@@ -48,27 +159,19 @@ class ApiService {
   Future<String> otpSignIn(String mobileNumber) async {
     final url = Uri.parse('$baseUrl/otp-signin');
     try {
-      final response = await http
-          .post(
-            url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            body: jsonEncode({'mobile_number': mobileNumber}),
-          )
-          .timeout(
-            const Duration(seconds: 50),
-            onTimeout: () {
-              throw Exception(
-                'Connection timeout. Please check your internet connection.',
-              );
-            },
-          );
+      final response = await _post(
+        url,
+        headers: _defaultHeaders(),
+        body: jsonEncode({'mobile_number': mobileNumber}),
+        timeoutMessage:
+            'Connection timeout. Please check your internet connection.',
+      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
-        if (data['status'] == true && data['data'] != null && data['data']['token'] != null) {
+        if (data['status'] == true &&
+            data['data'] != null &&
+            data['data']['token'] != null) {
           return data['data']['token'];
         } else {
           throw Exception(data['message'] ?? 'Failed to send OTP');
@@ -95,27 +198,18 @@ class ApiService {
     await _ensureInitialized();
     final url = Uri.parse('$baseUrl/profile');
     try {
-      final response = await http
-          .get(
-            url,
-            headers: _getHeaders(),
-          )
-          .timeout(
-            const Duration(seconds: 50),
-            onTimeout: () {
-              throw Exception(
-                'Connection timeout. Please check your internet connection.',
-              );
-            },
-          );
+      final response = await _get(
+        url,
+        headers: _getHeaders(),
+        timeoutMessage:
+            'Connection timeout. Please check your internet connection.',
+      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
         final status = data['status'];
-        final isOk = status == true ||
-            status == 1 ||
-            status == '1' ||
-            status == 'true';
+        final isOk =
+            status == true || status == 1 || status == '1' || status == 'true';
         final result = data['resultData'] ?? data['resultdata'];
         if (isOk && result is Map<String, dynamic>) {
           return ProfileModel.fromJson(result);
@@ -144,19 +238,12 @@ class ApiService {
     await _ensureInitialized();
     final url = Uri.parse('$baseUrl/leads');
     try {
-      final response = await http
-          .get(
-            url,
-            headers: _getHeaders(),
-          )
-          .timeout(
-            const Duration(seconds: 50),
-            onTimeout: () {
-              throw Exception(
-                'Connection timeout. Please check your internet connection.',
-              );
-            },
-          );
+      final response = await _get(
+        url,
+        headers: _getHeaders(),
+        timeoutMessage:
+            'Connection timeout. Please check your internet connection.',
+      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
@@ -187,19 +274,12 @@ class ApiService {
     await _ensureInitialized();
     final url = Uri.parse('$baseUrl/sectors');
     try {
-      final response = await http
-          .get(
-            url,
-            headers: _getHeaders(),
-          )
-          .timeout(
-            const Duration(seconds: 50),
-            onTimeout: () {
-              throw Exception(
-                'Connection timeout. Please check your internet connection.',
-              );
-            },
-          );
+      final response = await _get(
+        url,
+        headers: _getHeaders(),
+        timeoutMessage:
+            'Connection timeout. Please check your internet connection.',
+      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
@@ -234,24 +314,17 @@ class ApiService {
     await _ensureInitialized();
     final url = Uri.parse('$baseUrl/add-request');
     try {
-      final response = await http
-          .post(
-            url,
-            headers: _getHeaders(),
-            body: jsonEncode({
-              'lead_name': leadName,
-              'lead_contact': leadContact,
-              'lead_sector': leadSector,
-            }),
-          )
-          .timeout(
-            const Duration(seconds: 50),
-            onTimeout: () {
-              throw Exception(
-                'Connection timeout. Please check your internet connection.',
-              );
-            },
-          );
+      final response = await _post(
+        url,
+        headers: _getHeaders(),
+        body: jsonEncode({
+          'lead_name': leadName,
+          'lead_contact': leadContact,
+          'lead_sector': leadSector,
+        }),
+        timeoutMessage:
+            'Connection timeout. Please check your internet connection.',
+      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
@@ -282,19 +355,12 @@ class ApiService {
     await _ensureInitialized();
     final url = Uri.parse('$baseUrl/enquiries');
     try {
-      final response = await http
-          .get(
-            url,
-            headers: _getHeaders(),
-          )
-          .timeout(
-            const Duration(seconds: 50),
-            onTimeout: () {
-              throw Exception(
-                'Connection timeout. Please check your internet connection.',
-              );
-            },
-          );
+      final response = await _get(
+        url,
+        headers: _getHeaders(),
+        timeoutMessage:
+            'Connection timeout. Please check your internet connection.',
+      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
@@ -325,19 +391,12 @@ class ApiService {
     await _ensureInitialized();
     final url = Uri.parse('$baseUrl/enquiry-details?enquiry_id=$enquiryId');
     try {
-      final response = await http
-          .get(
-            url,
-            headers: _getHeaders(),
-          )
-          .timeout(
-            const Duration(seconds: 50),
-            onTimeout: () {
-              throw Exception(
-                'Connection timeout. Please check your internet connection.',
-              );
-            },
-          );
+      final response = await _get(
+        url,
+        headers: _getHeaders(),
+        timeoutMessage:
+            'Connection timeout. Please check your internet connection.',
+      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
@@ -363,21 +422,22 @@ class ApiService {
     await _ensureInitialized();
     final url = Uri.parse('$baseUrl/create-payment-order');
     try {
-      final response = await http
-          .post(
-            url,
-            headers: _getHeaders(),
-            body: jsonEncode({'enquiry_id': enquiryId}),
-          )
-          .timeout(const Duration(seconds: 50));
+      final response = await _post(
+        url,
+        headers: _getHeaders(),
+        body: jsonEncode({'enquiry_id': enquiryId}),
+      );
 
       final Map<String, dynamic> data = jsonDecode(response.body);
-      final isOk = data['status'] == true ||
+      final isOk =
+          data['status'] == true ||
           data['status'] == 1 ||
           data['status'] == '1';
       final result = data['resultData'] ?? data['resultdata'];
 
-      if (response.statusCode == 200 && isOk && result is Map<String, dynamic>) {
+      if (response.statusCode == 200 &&
+          isOk &&
+          result is Map<String, dynamic>) {
         return PaymentOrderModel.fromJson(result);
       }
 
@@ -397,21 +457,20 @@ class ApiService {
     await _ensureInitialized();
     final url = Uri.parse('$baseUrl/verify-payment');
     try {
-      final response = await http
-          .post(
-            url,
-            headers: _getHeaders(),
-            body: jsonEncode({
-              'enquiry_id': enquiryId,
-              'razorpay_order_id': orderId,
-              'razorpay_payment_id': paymentId,
-              'razorpay_signature': signature,
-            }),
-          )
-          .timeout(const Duration(seconds: 50));
+      final response = await _post(
+        url,
+        headers: _getHeaders(),
+        body: jsonEncode({
+          'enquiry_id': enquiryId,
+          'razorpay_order_id': orderId,
+          'razorpay_payment_id': paymentId,
+          'razorpay_signature': signature,
+        }),
+      );
 
       final Map<String, dynamic> data = jsonDecode(response.body);
-      final isOk = data['status'] == true ||
+      final isOk =
+          data['status'] == true ||
           data['status'] == 1 ||
           data['status'] == '1';
 
@@ -439,19 +498,17 @@ class ApiService {
     await _ensureInitialized();
     final url = Uri.parse('$baseUrl/submit-feedback');
     try {
-      final response = await http
-          .post(
-            url,
-            headers: _getHeaders(),
-            body: jsonEncode({
-              'enquiry_id': enquiryId,
-              'company_rating': companyRating,
-              'company_comment': companyComment,
-              'hotels': hotelFeedback,
-              'vehicles': vehicleFeedback,
-            }),
-          )
-          .timeout(const Duration(seconds: 50));
+      final response = await _post(
+        url,
+        headers: _getHeaders(),
+        body: jsonEncode({
+          'enquiry_id': enquiryId,
+          'company_rating': companyRating,
+          'company_comment': companyComment,
+          'hotels': hotelFeedback,
+          'vehicles': vehicleFeedback,
+        }),
+      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
@@ -482,25 +539,21 @@ class ApiService {
     await _ensureInitialized();
     final url = Uri.parse('$baseUrl/sos');
     try {
-      final response = await http
-          .post(
-            url,
-            headers: _getHeaders(),
-            body: jsonEncode({
-              'enquiry_id': enquiryId,
-              'trip_day': tripDay,
-              'message': message,
-            }),
-          )
-          .timeout(const Duration(seconds: 50));
+      final response = await _post(
+        url,
+        headers: _getHeaders(),
+        body: jsonEncode({
+          'enquiry_id': enquiryId,
+          'trip_day': tripDay,
+          'message': message,
+        }),
+      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
         final status = data['status'];
-        final isOk = status == true ||
-            status == 1 ||
-            status == '1' ||
-            status == 'true';
+        final isOk =
+            status == true || status == 1 || status == '1' || status == 'true';
         if (isOk) {
           return data;
         }
@@ -525,22 +578,12 @@ class ApiService {
   Future<List<OfferModel>> fetchOffers() async {
     final url = Uri.parse('$baseUrl/offers');
     try {
-      final response = await http
-          .get(
-            url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-          )
-          .timeout(
-            const Duration(seconds: 50),
-            onTimeout: () {
-              throw Exception(
-                'Connection timeout. Please check your internet connection.',
-              );
-            },
-          );
+      final response = await _get(
+        url,
+        headers: _defaultHeaders(),
+        timeoutMessage:
+            'Connection timeout. Please check your internet connection.',
+      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
@@ -569,15 +612,7 @@ class ApiService {
   Future<List<TourModel>> fetchGroupTours() async {
     final url = Uri.parse('$baseUrl/group-tours');
     try {
-      final response = await http
-          .get(
-            url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-          )
-          .timeout(const Duration(seconds: 50));
+      final response = await _get(url, headers: _defaultHeaders());
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
@@ -598,15 +633,7 @@ class ApiService {
   Future<List<NewsModel>> fetchNews() async {
     final url = Uri.parse('$baseUrl/news');
     try {
-      final response = await http
-          .get(
-            url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-          )
-          .timeout(const Duration(seconds: 50));
+      final response = await _get(url, headers: _defaultHeaders());
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
@@ -627,15 +654,7 @@ class ApiService {
   Future<List<TourModel>> fetchUpcomingTours() async {
     final url = Uri.parse('$baseUrl/upcoming-tours');
     try {
-      final response = await http
-          .get(
-            url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-          )
-          .timeout(const Duration(seconds: 50));
+      final response = await _get(url, headers: _defaultHeaders());
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
@@ -661,23 +680,16 @@ class ApiService {
     await _ensureInitialized();
     final url = Uri.parse('$baseUrl/change-password');
     try {
-      final response = await http
-          .post(
-            url,
-            headers: _getHeaders(),
-            body: jsonEncode({
-              'old_password': oldPassword,
-              'new_password': newPassword,
-            }),
-          )
-          .timeout(
-            const Duration(seconds: 50),
-            onTimeout: () {
-              throw Exception(
-                'Connection timeout. Please check your internet connection.',
-              );
-            },
-          );
+      final response = await _post(
+        url,
+        headers: _getHeaders(),
+        body: jsonEncode({
+          'old_password': oldPassword,
+          'new_password': newPassword,
+        }),
+        timeoutMessage:
+            'Connection timeout. Please check your internet connection.',
+      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
@@ -704,37 +716,25 @@ class ApiService {
   /// Sends a POST request to the /forgot-password endpoint.
   /// Returns a [Map<String, dynamic>] containing the response data on success.
   /// Throws an [Exception] if the request fails or there is a network/server error.
-  Future<Map<String, dynamic>> forgotPassword({
-    required String email,
-  }) async {
+  Future<Map<String, dynamic>> forgotPassword({required String email}) async {
     final url = Uri.parse('$baseUrl/forgot-password');
     try {
-      final response = await http
-          .post(
-            url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            body: jsonEncode({
-              'username': email,
-            }),
-          )
-          .timeout(
-            const Duration(seconds: 50),
-            onTimeout: () {
-              throw Exception(
-                'Connection timeout. Please check your internet connection.',
-              );
-            },
-          );
+      final response = await _post(
+        url,
+        headers: _defaultHeaders(),
+        body: jsonEncode({'username': email}),
+        timeoutMessage:
+            'Connection timeout. Please check your internet connection.',
+      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
         if (data['status'] == true) {
           return data;
         } else {
-          throw Exception(data['message'] ?? 'Failed to send password reset email');
+          throw Exception(
+            data['message'] ?? 'Failed to send password reset email',
+          );
         }
       } else {
         throw Exception('Server returned status code: ${response.statusCode}');
@@ -756,8 +756,8 @@ class ApiService {
   /// Throws an [Exception] if the request fails or there is a network/server error.
   Future<WalletModel> fetchWallet() async {
     await _ensureInitialized();
-    final response = await http.get(
-      Uri.parse('https://macha.tours/api/wallet'),
+    final response = await _get(
+      Uri.parse('$baseUrl/wallet'),
       headers: _getHeaders(),
     );
 
@@ -766,7 +766,9 @@ class ApiService {
       if (jsonResponse['status'] == true) {
         return WalletModel.fromJson(jsonResponse['resultData']);
       } else {
-        throw Exception(jsonResponse['message'] ?? 'Failed to fetch wallet data');
+        throw Exception(
+          jsonResponse['message'] ?? 'Failed to fetch wallet data',
+        );
       }
     } else {
       throw Exception('Failed to fetch wallet data: ${response.statusCode}');
@@ -781,24 +783,26 @@ class ApiService {
   Future<void> uploadContacts(List<Contact> contacts) async {
     try {
       await _ensureInitialized();
-      final List<Map<String, String>> data = contacts
-          .where((c) => c.phones.isNotEmpty)
-          .map((c) {
-            final phone = c.phones.first.number.replaceAll(RegExp(r'\D'), '').replaceFirst(RegExp(r'^.*(?=\d{10}\$)'), '');
-            return {
-              'name': c.displayName ?? '',
-              'number': phone,
-            };
-          })
-          .where((c) => c['number']!.length == 10)
-          .toList();
+      final List<Map<String, String>> data =
+          contacts
+              .where((c) => c.phones.isNotEmpty)
+              .map((c) {
+                final phone = c.phones.first.number
+                    .replaceAll(RegExp(r'\D'), '')
+                    .replaceFirst(RegExp(r'^.*(?=\d{10}\$)'), '');
+                return {'name': c.displayName ?? '', 'number': phone};
+              })
+              .where((c) => c['number']!.length == 10)
+              .toList();
       if (data.isEmpty) return;
-      final response = await http.post(
-        Uri.parse('https://macha.tours/api/contacts'),
+      final response = await _post(
+        Uri.parse('$baseUrl/contacts'),
         headers: _getHeaders(),
         body: jsonEncode({'data': data}),
       );
-      debugPrint('Contacts upload response: ${response.statusCode} ${response.body}');
+      debugPrint(
+        'Contacts upload response: ${response.statusCode} ${response.body}',
+      );
       if (response.statusCode == 200) {
         debugPrint('All contacts saved to server.');
       }
@@ -812,40 +816,32 @@ class ApiService {
   /// Sends a POST request to the /validate-otp endpoint.
   /// Returns a map with 'auth_token' and 'is_profile_completed' on success.
   /// Throws an [Exception] if the request fails or there is a network/server error.
-  Future<Map<String, dynamic>> validateOtp({required String token, required String otp}) async {
+  Future<Map<String, dynamic>> validateOtp({
+    required String token,
+    required String otp,
+  }) async {
     final url = Uri.parse('$baseUrl/validate-otp');
     try {
-      final response = await http
-          .post(
-            url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            body: jsonEncode({'token': token, 'otp': otp}),
-          )
-          .timeout(
-            const Duration(seconds: 50),
-            onTimeout: () {
-              throw Exception(
-                'Connection timeout. Please check your internet connection.',
-              );
-            },
-          );
+      final response = await _post(
+        url,
+        headers: _defaultHeaders(),
+        body: jsonEncode({'token': token, 'otp': otp}),
+        timeoutMessage:
+            'Connection timeout. Please check your internet connection.',
+      );
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(response.body);
-        if (data['status'] == true && data['data'] != null && data['data']['auth_token'] != null) {
-          return {
-            'auth_token': data['data']['auth_token'],
-            'is_profile_completed': data['data']['is_profile_completed'],
-          };
-        } else {
-          throw Exception(data['message'] ?? 'Failed to validate OTP');
-        }
-      } else {
-        throw Exception('Server returned status code: ${response.statusCode}');
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      if (response.statusCode == 200 &&
+          data['status'] == true &&
+          data['data'] is Map &&
+          data['data']['auth_token'] != null) {
+        return {
+          'auth_token': data['data']['auth_token'].toString(),
+          'is_profile_completed': data['data']['is_profile_completed'],
+        };
       }
+
+      throw Exception(data['message'] ?? 'Failed to validate OTP');
     } catch (e) {
       if (e.toString().contains('SocketException')) {
         throw Exception(
@@ -861,28 +857,21 @@ class ApiService {
   /// Sends a POST request to the /update-profile endpoint.
   /// Returns the message on success.
   /// Throws an [Exception] if the request fails or there is a network/server error.
-  Future<String> updateProfile({required String name, required String gender, required String email}) async {
+  Future<String> updateProfile({
+    required String name,
+    required String gender,
+    required String email,
+  }) async {
     final url = Uri.parse('$baseUrl/update-profile');
     await _ensureInitialized();
     try {
-      final response = await http
-          .post(
-            url,
-            headers: _getHeaders(),
-            body: jsonEncode({
-              'name': name,
-              'gender': gender,
-              'email': email,
-            }),
-          )
-          .timeout(
-            const Duration(seconds: 50),
-            onTimeout: () {
-              throw Exception(
-                'Connection timeout. Please check your internet connection.',
-              );
-            },
-          );
+      final response = await _post(
+        url,
+        headers: _getHeaders(),
+        body: jsonEncode({'name': name, 'gender': gender, 'email': email}),
+        timeoutMessage:
+            'Connection timeout. Please check your internet connection.',
+      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
@@ -904,57 +893,14 @@ class ApiService {
     }
   }
 
-  Future<void> saveFcmToken({
-    required String deviceId,
-    required String token,
-    required String platform,
-  }) async {
-    await _ensureInitialized();
-    final url = Uri.parse('$baseUrl/save-fcm');
-    final response = await http
-        .post(
-          url,
-          headers: _getHeaders(),
-          body: jsonEncode({
-            'device_id': deviceId,
-            'token': token,
-            'platform': platform,
-          }),
-        )
-        .timeout(const Duration(seconds: 30));
-
-    if (response.statusCode != 200) {
-      throw Exception('Failed to save FCM token');
-    }
-
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    if (data['status'] != true) {
-      throw Exception(data['message'] ?? 'Failed to save FCM token');
-    }
-  }
-
-  Future<void> removeFcmToken({required String deviceId}) async {
-    await _ensureInitialized();
-    final url = Uri.parse('$baseUrl/remove-fcm');
-    final response = await http
-        .post(
-          url,
-          headers: _getHeaders(),
-          body: jsonEncode({'device_id': deviceId}),
-        )
-        .timeout(const Duration(seconds: 30));
-
-    if (response.statusCode != 200) {
-      throw Exception('Failed to remove FCM token');
-    }
-  }
-
   Future<List<Map<String, dynamic>>> fetchNotifications() async {
     await _ensureInitialized();
     final url = Uri.parse('$baseUrl/notifications');
-    final response = await http
-        .get(url, headers: _getHeaders())
-        .timeout(const Duration(seconds: 30));
+    final response = await _get(
+      url,
+      headers: _getHeaders(),
+      timeout: const Duration(seconds: 30),
+    );
 
     if (response.statusCode != 200) {
       throw Exception('Failed to fetch notifications');
@@ -972,13 +918,12 @@ class ApiService {
   Future<void> markNotificationsRead({int notificationId = 0}) async {
     await _ensureInitialized();
     final url = Uri.parse('$baseUrl/mark-notifications-read');
-    final response = await http
-        .post(
-          url,
-          headers: _getHeaders(),
-          body: jsonEncode({'notification_id': notificationId}),
-        )
-        .timeout(const Duration(seconds: 30));
+    final response = await _post(
+      url,
+      headers: _getHeaders(),
+      body: jsonEncode({'notification_id': notificationId}),
+      timeout: const Duration(seconds: 30),
+    );
 
     if (response.statusCode != 200) {
       throw Exception('Failed to mark notifications as read');

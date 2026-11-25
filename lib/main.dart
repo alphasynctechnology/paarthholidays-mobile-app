@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:upgrader/upgrader.dart';
 import 'package:paarth_holidays/screens/splash/splash_screen.dart';
 import 'package:paarth_holidays/core/theme/app_theme.dart';
-import 'package:paarth_holidays/services/push_notification_service.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await PushNotificationService.instance.initialize();
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
   runApp(const MyApp());
 }
 

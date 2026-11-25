@@ -3,12 +3,12 @@ import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../models/profile_model.dart';
-import '../../../services/push_notification_service.dart';
 import '../../../services/api_service.dart';
 import '../../../services/storage_service.dart';
+import '../../../controllers/notifications_controller.dart';
 import '../../../utils/ongoing_tour_helper.dart';
 import '../../../utils/phone_launcher.dart';
-import '../../auth/login/login_screen.dart';
+import '../home_screen.dart';
 
 class ProfileController extends GetxController {
   final ApiService _apiService = ApiService();
@@ -159,9 +159,11 @@ class ProfileController extends GetxController {
   Future<void> logout() async {
     try {
       isLoading.value = true;
-      await PushNotificationService.instance.unregisterToken();
-      await _storageService.clearAll();
-      Get.offAll(() => LoginScreen());
+      await _storageService.clearAuthSession();
+      if (Get.isRegistered<NotificationsController>()) {
+        await Get.delete<NotificationsController>(force: true);
+      }
+      Get.offAll(() => HomeScreen());
     } catch (e) {
       Get.snackbar(
         'Error',

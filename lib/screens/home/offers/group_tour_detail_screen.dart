@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../models/tour_model.dart';
+import '../../../utils/auth_guard.dart';
 import '../../../widgets/common/app_bar.dart';
 import '../home_controller.dart';
 import '../leads/create_lead_screen.dart';
@@ -12,9 +13,14 @@ class GroupTourDetailScreen extends StatelessWidget {
 
   const GroupTourDetailScreen({super.key, required this.tour});
 
-  void _goToEnquiry() {
+  void _goToEnquiry() async {
+    final allowed = await AuthGuard.requireLogin(
+      message: 'Please login to raise an enquiry for this tour.',
+    );
+    if (!allowed) return;
+
     final homeController = Get.find<HomeController>();
-    homeController.changeTabIndex(2);
+    await homeController.changeTabIndex(2);
     Get.back();
     Get.to(() => const CreateLeadScreen());
   }

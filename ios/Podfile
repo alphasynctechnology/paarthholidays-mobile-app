@@ -1,8 +1,11 @@
 # Uncomment this line to define a global platform for your project
-# platform :ios, '13.0'
+platform :ios, '15.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+# Avoid fragile absolute xcfilelist paths when PODS_ROOT is empty in Xcode.
+install! 'cocoapods', :disable_input_output_paths => true
 
 project 'Runner', {
   'Debug' => :debug,
@@ -39,5 +42,33 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      if config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f < 13.0
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+      end
+    end
+  end
+
+  # Keep Flutter build settings available when Runner uses Pods as base config.
+  flutter_include = '#include? "../../../Flutter/Generated.xcconfig"'
+  %w[debug release profile].each do |mode|
+    xcconfig_path = File.expand_path(
+      "Pods/Target Support Files/Pods-Runner/Pods-Runner.#{mode}.xcconfig",
+      __dir__,
+    )
+    next unless File.exist?(xcconfig_path)
+
+    contents = File.read(xcconfig_path)
+    unless contents.include?('Flutter/Generated.xcconfig')
+      File.write(xcconfig_path, "#{flutter_include}\n#{contents}")
+    end
+
+    # Mirror into Flutter/ for easier Xcode access (no spaces in path).
+    mirror = File.expand_path("Flutter/Pods-Runner.#{mode}.xcconfig", __dir__)
+    mirrored = File.read(xcconfig_path).sub(
+      '#include? "../../../Flutter/Generated.xcconfig"',
+      '#include? "Generated.xcconfig"',
+    )
+    File.write(mirror, mirrored)
   end
 end

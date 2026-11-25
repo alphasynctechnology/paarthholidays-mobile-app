@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../home/home_screen.dart';
-import '../../../services/push_notification_service.dart';
 import '../../../services/api_service.dart';
 import '../../../services/storage_service.dart';
 import 'dart:async';
@@ -13,13 +12,18 @@ class LoginController extends GetxController {
   final TextEditingController mobileController = TextEditingController();
   final List<TextEditingController> otpControllers = List.generate(
     6,
-    (index) => TextEditingController(),
+    (_) => TextEditingController(),
   );
+  final List<FocusNode> otpFocusNodes = List.generate(6, (_) => FocusNode());
+
   final RxBool isLoading = false.obs;
   final RxBool isOtpSent = false.obs;
   final RxInt resendSecondsLeft = 0.obs;
   Timer? _resendTimer;
-  String? _otpToken; // Store the temporary token for OTP validation
+  String? _otpToken;
+
+  final ApiService _apiService = ApiService();
+  StorageService? _storageService;
 
   String get resendTimerText {
     final int min = resendSecondsLeft.value ~/ 60;
@@ -39,15 +43,77 @@ class LoginController extends GetxController {
     });
   }
 
-  late final ApiService _apiService;
-  late final StorageService _storageService;
-
-  @override
-  void onInit() async {
-    super.onInit();
-    _apiService = ApiService();
+  Future<StorageService> _storage() async {
+    if (_storageService != null) return _storageService!;
     final prefs = await SharedPreferences.getInstance();
     _storageService = StorageService(prefs);
+    return _storageService!;
+  }
+
+  bool _asBool(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      return normalized == 'true' || normalized == '1' || normalized == 'yes';
+    }
+    return false;
+  }
+
+  void clearOtpFields() {
+    for (final c in otpControllers) {
+      c.clear();
+    }
+  }
+
+  /// Opens the iOS/Android keyboard on the first OTP box after fields appear.
+  void focusFirstOtpField() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 350), () {
+        if (isClosed) return;
+        if (otpFocusNodes.isNotEmpty) {
+          otpFocusNodes.first.requestFocus();
+        }
+      });
+    });
+  }
+
+  void onOtpChanged(int index, String value) {
+    if (value.length > 1) {
+      // iOS SMS autofill / paste can deliver the full code into one field.
+      _distributeOtp(value);
+      return;
+    }
+
+    if (value.isNotEmpty && index < 5) {
+      otpFocusNodes[index + 1].requestFocus();
+    } else if (value.isEmpty && index > 0) {
+      otpFocusNodes[index - 1].requestFocus();
+    }
+
+    if (index == 5 && value.isNotEmpty) {
+      final otp = otpControllers.map((c) => c.text).join('');
+      if (otp.length == 6) {
+        otpFocusNodes[index].unfocus();
+      }
+    }
+  }
+
+  void _distributeOtp(String raw) {
+    final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) return;
+
+    for (var i = 0; i < otpControllers.length; i++) {
+      otpControllers[i].text = i < digits.length ? digits[i] : '';
+    }
+
+    final focusIndex = digits.length.clamp(0, 5);
+    if (digits.length >= 6) {
+      otpFocusNodes[5].unfocus();
+    } else {
+      otpFocusNodes[focusIndex].requestFocus();
+    }
   }
 
   Future<void> sendOtp() async {
@@ -72,9 +138,11 @@ class LoginController extends GetxController {
     try {
       isLoading.value = true;
       final token = await _apiService.otpSignIn(mobileController.text);
-      _otpToken = token; // Store the token for OTP validation
+      _otpToken = token;
+      clearOtpFields();
       isOtpSent.value = true;
       _startResendTimer();
+      focusFirstOtpField();
       Get.snackbar(
         'Success',
         'OTP sent to your mobile number',
@@ -107,7 +175,7 @@ class LoginController extends GetxController {
       return;
     }
 
-    String otp = otpControllers.map((controller) => controller.text).join('');
+    final otp = otpControllers.map((controller) => controller.text).join('');
     if (otp.isEmpty) {
       Get.snackbar(
         'Error',
@@ -124,7 +192,7 @@ class LoginController extends GetxController {
       );
       return;
     }
-    if (_otpToken == null) {
+    if (_otpToken == null || _otpToken!.isEmpty) {
       Get.snackbar(
         'Error',
         'OTP token missing. Please request OTP again.',
@@ -132,16 +200,29 @@ class LoginController extends GetxController {
       );
       return;
     }
+
     try {
       isLoading.value = true;
       final result = await _apiService.validateOtp(token: _otpToken!, otp: otp);
-      await _storageService.saveToken(result['auth_token']);
-      await _storageService.saveMobile(mobileController.text.trim());
-      await _storageService.saveLoginMethod('otp');
-      await _storageService.saveIsProfileCompleted(result['is_profile_completed'] == true);
-      await PushNotificationService.instance.syncTokenIfLoggedIn();
-      if (result['is_profile_completed'] == true) {
-        Get.offAll(() => HomeScreen());
+      final authToken = result['auth_token']?.toString() ?? '';
+      if (authToken.isEmpty) {
+        throw Exception('Login failed. Please try again.');
+      }
+
+      final storage = await _storage();
+      final profileCompleted = _asBool(result['is_profile_completed']);
+
+      await storage.saveToken(authToken);
+      await storage.saveMobile(mobileController.text.trim());
+      await storage.saveLoginMethod('otp');
+      await storage.saveIsProfileCompleted(profileCompleted);
+
+      if (profileCompleted) {
+        if (Get.key.currentState?.canPop() ?? false) {
+          Get.back(result: true);
+        } else {
+          Get.offAll(() => HomeScreen());
+        }
         Get.snackbar(
           'Success',
           'Login successful',
@@ -179,15 +260,17 @@ class LoginController extends GetxController {
     }
 
     sendOtp();
-    _startResendTimer();
   }
 
   @override
   void onClose() {
     _resendTimer?.cancel();
     mobileController.dispose();
-    for (var controller in otpControllers) {
+    for (final controller in otpControllers) {
       controller.dispose();
+    }
+    for (final node in otpFocusNodes) {
+      node.dispose();
     }
     super.onClose();
   }

@@ -4,6 +4,7 @@ import '../../core/theme/app_colors.dart';
 import '../../controllers/notifications_controller.dart';
 import '../../screens/notifications/notifications_screen.dart';
 import '../../screens/wallet/wallet_screen.dart';
+import '../../utils/auth_guard.dart';
 
 class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -25,6 +26,29 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  Future<void> _openNotifications() async {
+    final allowed = await AuthGuard.requireLogin(
+      message: 'Please login to view your notifications.',
+    );
+    if (!allowed) return;
+
+    if (Get.isRegistered<NotificationsController>()) {
+      final controller = Get.find<NotificationsController>();
+      await Get.to(() => const NotificationsScreen());
+      controller.fetchNotifications();
+    } else {
+      Get.to(() => const NotificationsScreen());
+    }
+  }
+
+  Future<void> _openWallet() async {
+    final allowed = await AuthGuard.requireLogin(
+      message: 'Please login to view your reward wallet.',
+    );
+    if (!allowed) return;
+    Get.to(() => const WalletScreen());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,10 +75,7 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
 
             return IconButton(
               tooltip: 'Notifications',
-              onPressed: () async {
-                await Get.to(() => const NotificationsScreen());
-                controller.fetchNotifications();
-              },
+              onPressed: _openNotifications,
               icon: Badge(
                 isLabelVisible: unreadCount > 0,
                 label: Text(
@@ -70,20 +91,16 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
         if (showNotificationIcon && !Get.isRegistered<NotificationsController>())
           IconButton(
             tooltip: 'Notifications',
-            onPressed: () => Get.to(() => const NotificationsScreen()),
+            onPressed: _openNotifications,
             icon: const Icon(Icons.notifications_outlined),
           ),
-        // Wallet icon
         if (showWalletIcon)
-        IconButton(
-          icon: const Icon(Icons.account_balance_wallet),
-          onPressed: () {
-            Get.to(() => const WalletScreen());
-          },
-        ),
-        // Additional actions if provided
+          IconButton(
+            icon: const Icon(Icons.account_balance_wallet),
+            onPressed: _openWallet,
+          ),
         if (actions != null) ...actions!,
-        const SizedBox(width: 8), // Add some padding at the end
+        const SizedBox(width: 8),
       ],
     );
   }

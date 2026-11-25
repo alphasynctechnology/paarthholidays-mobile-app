@@ -2,7 +2,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class StorageService {
   static const String tokenKey = 'auth_token';
-  static const String firstTimeKey = 'is_first_time';
   static const String isProfileCompletedKey = 'is_profile_completed';
   static const String mobileKey = 'user_mobile';
   static const String loginMethodKey = 'login_method';
@@ -19,16 +18,13 @@ class StorageService {
     return _prefs.getString(tokenKey);
   }
 
+  bool get isLoggedIn {
+    final token = getToken();
+    return token != null && token.isNotEmpty;
+  }
+
   Future<void> removeToken() async {
     await _prefs.remove(tokenKey);
-  }
-
-  bool? getIsFirstTime() {
-    return _prefs.getBool(firstTimeKey);
-  }
-
-  Future<void> setIsFirstTime(bool value) async {
-    await _prefs.setBool(firstTimeKey, value);
   }
 
   Future<void> saveIsProfileCompleted(bool value) async {
@@ -65,7 +61,14 @@ class StorageService {
     return _prefs.getString(deviceIdKey);
   }
 
+  Future<void> clearAuthSession() async {
+    await removeToken();
+    await _prefs.remove(mobileKey);
+    await _prefs.remove(loginMethodKey);
+    await _prefs.remove(isProfileCompletedKey);
+  }
+
   Future<void> clearAll() async {
     await _prefs.clear();
   }
-} 
+}

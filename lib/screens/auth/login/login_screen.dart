@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
-import '../../../core/extensions/text_style_extension.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../home/home_screen.dart';
 import 'login_controller.dart';
-import '../forgot_password/forgot_password_screen.dart';
 
 class LoginScreen extends StatelessWidget {
   LoginScreen({super.key});
@@ -13,11 +13,12 @@ class LoginScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
+    final media = MediaQuery.of(context);
+    final screenHeight = media.size.height;
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: true,
       body: Container(
-        height: screenHeight, // Ensures gradient fills the whole screen
         width: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -31,9 +32,14 @@ class LoginScreen extends StatelessWidget {
         ),
         child: SafeArea(
           child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                minHeight: screenHeight - MediaQuery.of(context).padding.top - MediaQuery.of(context).padding.bottom,
+                minHeight: screenHeight -
+                    media.padding.top -
+                    media.padding.bottom -
+                    media.viewInsets.bottom,
               ),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
@@ -183,73 +189,101 @@ class LoginScreen extends StatelessWidget {
                     const SizedBox(height: 20),
                     // OTP Field - Initially Hidden
                     Obx(
-                      () =>
-                          controller.isOtpSent.value
-                              ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.lock_outline,
-                                        color: AppColors.primary,
-                                        size: 20,
+                      () => controller.isOtpSent.value
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Row(
+                                  children: [
+                                    Icon(
+                                      Icons.lock_outline,
+                                      color: AppColors.primary,
+                                      size: 20,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Enter OTP',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textPrimary,
                                       ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'Enter OTP',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.textPrimary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceEvenly,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                AutofillGroup(
+                                  child: Row(
                                     children: List.generate(6, (index) {
                                       return Expanded(
                                         child: Container(
-                                          height: 60,
+                                          height: 56,
                                           margin: EdgeInsets.only(
                                             left: index == 0 ? 0 : 4,
                                             right: index == 5 ? 0 : 4,
                                           ),
                                           decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
+                                            borderRadius:
+                                                BorderRadius.circular(16),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: Colors.grey.withOpacity(
-                                                  0.1,
-                                                ),
+                                                color: Colors.grey
+                                                    .withValues(alpha: 0.1),
                                                 blurRadius: 8,
                                                 offset: const Offset(0, 4),
                                               ),
                                             ],
                                           ),
                                           child: TextField(
-                                            controller:
-                                                controller.otpControllers[index],
-                                            keyboardType: TextInputType.number,
+                                            controller: controller
+                                                .otpControllers[index],
+                                            focusNode: controller
+                                                .otpFocusNodes[index],
+                                            keyboardType:
+                                                const TextInputType
+                                                    .numberWithOptions(
+                                              signed: false,
+                                              decimal: false,
+                                            ),
+                                            textInputAction: index < 5
+                                                ? TextInputAction.next
+                                                : TextInputAction.done,
                                             textAlign: TextAlign.center,
-                                            maxLength: 1,
                                             style: const TextStyle(
                                               fontSize: 20,
                                               fontWeight: FontWeight.bold,
                                               color: AppColors.textPrimary,
                                             ),
+                                            cursorColor: AppColors.primary,
+                                            showCursor: true,
+                                            autofocus: index == 0,
+                                            enableSuggestions: false,
+                                            autocorrect: false,
+                                            enableIMEPersonalizedLearning:
+                                                false,
+                                            smartDashesType:
+                                                SmartDashesType.disabled,
+                                            smartQuotesType:
+                                                SmartQuotesType.disabled,
+                                            autofillHints: index == 0
+                                                ? const [
+                                                    AutofillHints.oneTimeCode,
+                                                  ]
+                                                : null,
+                                            inputFormatters: [
+                                              FilteringTextInputFormatter
+                                                  .digitsOnly,
+                                              LengthLimitingTextInputFormatter(
+                                                index == 0 ? 6 : 1,
+                                              ),
+                                            ],
                                             decoration: InputDecoration(
                                               counterText: '',
                                               contentPadding:
                                                   const EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                    vertical: 16,
-                                                  ),
+                                                horizontal: 4,
+                                                vertical: 14,
+                                              ),
                                               filled: true,
                                               fillColor: Colors.white,
                                               border: OutlineInputBorder(
@@ -271,40 +305,19 @@ class LoginScreen extends StatelessWidget {
                                                 ),
                                               ),
                                             ),
-                                            onChanged: (value) {
-                                              if (value.isNotEmpty && index < 5) {
-                                                FocusScope.of(
-                                                  context,
-                                                ).nextFocus();
-                                              } else if (value.isEmpty &&
-                                                  index > 0) {
-                                                FocusScope.of(
-                                                  context,
-                                                ).previousFocus();
-                                              }
-                                              // Check if all 6 digits are entered
-                                              if (index == 5 &&
-                                                  value.isNotEmpty) {
-                                                // Small delay to ensure the last digit is properly set
-                                                Future.delayed(
-                                                  const Duration(
-                                                    milliseconds: 100,
-                                                  ),
-                                                  () {
-                                                    String otp = controller
-                                                        .otpControllers
-                                                        .map(
-                                                          (controller) =>
-                                                              controller.text,
-                                                        )
-                                                        .join('');
-                                                    if (otp.length == 6) {
-                                                      FocusScope.of(
-                                                        context,
-                                                      ).unfocus();
-                                                    }
-                                                  },
-                                                );
+                                            onTap: () {
+                                              controller.otpFocusNodes[index]
+                                                  .requestFocus();
+                                            },
+                                            onChanged: (value) => controller
+                                                .onOtpChanged(index, value),
+                                            onSubmitted: (_) {
+                                              if (index < 5) {
+                                                controller
+                                                    .otpFocusNodes[index + 1]
+                                                    .requestFocus();
+                                              } else {
+                                                controller.verifyOtp();
                                               }
                                             },
                                           ),
@@ -312,9 +325,10 @@ class LoginScreen extends StatelessWidget {
                                       );
                                     }),
                                   ),
-                                ],
-                              )
-                              : const SizedBox.shrink(),
+                                ),
+                              ],
+                            )
+                          : const SizedBox.shrink(),
                     ),
                     const SizedBox(height: 32),
                     // Send OTP Button - Hidden after OTP is sent
@@ -499,6 +513,24 @@ class LoginScreen extends StatelessWidget {
                           ),
                       ),
                     ],
+                    const SizedBox(height: 24),
+                    TextButton(
+                      onPressed: () {
+                        if (Navigator.of(context).canPop()) {
+                          Get.back();
+                        } else {
+                          Get.offAll(() => HomeScreen());
+                        }
+                      },
+                      child: Text(
+                        'Continue browsing',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
